@@ -1,0 +1,141 @@
+---
+title: "EDA"
+author: "Serkan Oral"
+date: "2022-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Packages
+```{r packages, message=TRUE, warning=TRUE, include=FALSE}
+
+library(tidyverse)
+library(data.table)
+library(naniar)
+library(janitor)
+library(patchwork)
+
+```
+
+# Data
+
+```{r}
+kaggle <- fread("kaggle_survey_2022_responses.csv", skip = 1)
+```
+
+
+```{r}
+kaggle$surveyer_id <- seq.int(nrow(kaggle))
+
+kaggle <- kaggle %>% 
+  select(surveyer_id,everything()) 
+```
+
+# Platforms
+
+```{r}
+
+platform_data <- kaggle[, 1:18 ]
+
+
+```
+
+
+
+```{r}
+platform_data_melt <-  melt(platform_data,  measure.vars = grep("^On which platforms", colnames(kaggle))) 
+
+
+```
+
+
+
+```{r}
+platform <- platform_data_melt %>% 
+  select(-variable) %>% 
+  rename(Platform_name = "value") %>% 
+  mutate(Platform_name = ifelse(Platform_name == "","No Response", Platform_name)) %>% 
+  mutate_if(is.character, factor) %>% 
+  clean_names()
+```
+
+
+
+```{r}
+
+platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  ggplot(aes(fct_infreq(platform_name), fill = what_is_your_age_number_years) )+
+  geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "Age")
+
+```
+
+
+```{r}
+
+platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  ggplot(aes(fct_infreq(platform_name), fill = are_you_currently_a_student_high_school_university_or_graduate) )+
+  geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "In School or University")
+```
+
+```{r}
+platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  filter(are_you_currently_a_student_high_school_university_or_graduate == "No") %>% 
+  ggplot(aes(fct_infreq(platform_name), fill = what_is_your_age_number_years) )+
+  geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "Age")
+```
+
+
+
+```{r}
+
+country_names <- platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  group_by(in_which_country_do_you_currently_reside) %>% summarise(n = n()) %>% arrange(desc(n)) %>%  pull(in_which_country_do_you_currently_reside)
+
+```
+
+First 3 Countries
+```{r}
+country_names[1:3]
+
+platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  filter(in_which_country_do_you_currently_reside %in% country_names[1:3]) %>% 
+  ggplot(aes(fct_rev(fct_infreq(in_which_country_do_you_currently_reside)), fill = fct_infreq(platform_name)) )+
+  geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "Age") +coord_flip()
+```
+
+Later 10 Countries
+```{r}
+country_names[1:3]
+
+platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  filter(in_which_country_do_you_currently_reside %in% country_names[4:14]) %>% 
+  ggplot(aes(fct_rev(fct_infreq(in_which_country_do_you_currently_reside)), fill = fct_infreq(platform_name)) )+
+  geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "Age") +coord_flip()
+```
+
+Later 10 Countries
+```{r}
+country_names[1:3]
+
+platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  filter(in_which_country_do_you_currently_reside %in% country_names[15:25]) %>% 
+  ggplot(aes(fct_rev(fct_infreq(in_which_country_do_you_currently_reside)), fill = fct_infreq(platform_name)) )+
+  geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "Age") +coord_flip()
+```
