@@ -139,3 +139,32 @@ platform %>%
   ggplot(aes(fct_rev(fct_infreq(in_which_country_do_you_currently_reside)), fill = fct_infreq(platform_name)) )+
   geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "Age") +coord_flip()
 ```
+
+
+
+
+
+```{r}
+platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  group_by(platform_name) %>% 
+  dplyr::summarise(cnt = n()) %>% 
+  mutate(freq = round(cnt/sum(cnt),3)) %>% 
+  arrange(desc(freq)) %>% 
+  mutate(platform_name = factor(platform_name)) %>% 
+  ggplot(aes(fct_rev(fct_reorder(platform_name , freq)), freq)) +
+  geom_col()
+```
+
+
+
+
+
+
+
+
+
+
+
+
