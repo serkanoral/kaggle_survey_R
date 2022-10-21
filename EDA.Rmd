@@ -9,8 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Packages
+
 ```{r packages, message=TRUE, warning=TRUE, include=FALSE}
+# Packages
 
 library(tidyverse)
 library(data.table)
@@ -20,12 +21,16 @@ library(patchwork)
 
 ```
 
-# Data
+We will mostly focus on the platform people learn data science.
+We may check other features on some other notebook.
 
+# Data Cleaning 
+
+Downloading the data.
 ```{r}
 kaggle <- fread("kaggle_survey_2022_responses.csv", skip = 1)
 ```
-
+We add surveyer_id column, it will be usefull.
 
 ```{r}
 kaggle$surveyer_id <- seq.int(nrow(kaggle))
@@ -36,6 +41,8 @@ kaggle <- kaggle %>%
 
 # Platforms
 
+We extract just some columns, where we do our analysis.
+
 ```{r}
 
 platform_data <- kaggle[, 1:18 ]
@@ -44,6 +51,7 @@ platform_data <- kaggle[, 1:18 ]
 ```
 
 
+We make the dataset to longer format, cause surveyers can choose more than one platform.
 
 ```{r}
 platform_data_melt <-  melt(platform_data,  measure.vars = grep("^On which platforms", colnames(kaggle))) 
@@ -52,6 +60,7 @@ platform_data_melt <-  melt(platform_data,  measure.vars = grep("^On which platf
 ```
 
 
+Changing NA'S to "No Response"
 
 ```{r}
 platform <- platform_data_melt %>% 
@@ -62,7 +71,7 @@ platform <- platform_data_melt %>%
   clean_names()
 ```
 
-
+Here on there will some plots for you understand the relationship.
 
 ```{r}
 
@@ -72,6 +81,17 @@ platform %>%
   ggplot(aes(fct_infreq(platform_name), fill = what_is_your_age_number_years) )+
   geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "Age")
 
+```
+
+There is no student in this plot, I want to see that if this change anythink.
+
+```{r}
+platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  filter(are_you_currently_a_student_high_school_university_or_graduate == "No") %>% 
+  ggplot(aes(fct_infreq(platform_name), fill = what_is_your_age_number_years) )+
+  geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "Age")
 ```
 
 
@@ -84,16 +104,9 @@ platform %>%
   geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "In School or University")
 ```
 
-```{r}
-platform %>% 
-  filter(platform_name != "No Response" &platform_name != "Other" 
-         & platform_name != "None") %>% 
-  filter(are_you_currently_a_student_high_school_university_or_graduate == "No") %>% 
-  ggplot(aes(fct_infreq(platform_name), fill = what_is_your_age_number_years) )+
-  geom_bar() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab(NULL) + ylab(NULL) + labs(fill = "Age")
-```
 
 
+We get the Country name big to small according to number of replay to country.
 
 ```{r}
 
@@ -142,7 +155,7 @@ platform %>%
 
 
 
-
+How many percentage each platform gets from the market.
 
 ```{r}
 platform %>% 
@@ -153,18 +166,101 @@ platform %>%
   mutate(freq = round(cnt/sum(cnt),3)) %>% 
   arrange(desc(freq)) %>% 
   mutate(platform_name = factor(platform_name)) %>% 
-  ggplot(aes(fct_rev(fct_reorder(platform_name , freq)), freq)) +
-  geom_col()
+  ggplot(aes(fct_rev(fct_reorder(platform_name , freq)), freq, fill = fct_rev(fct_reorder(platform_name , freq)))) +
+  geom_col() +theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  xlab(NULL)+ ylab("Percentage") + labs(fill = "Platform Name") +
+  scale_y_continuous(labels = scales::percent)
+```
+
+Where kaggle courses are number 1
+
+```{r}
+platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  group_by( in_which_country_do_you_currently_reside,platform_name) %>% 
+  summarise(cnt = n()) %>% 
+  mutate(freq = round(cnt/sum(cnt),3), rank = rank(desc(freq), ties.method = "first")) %>% 
+  arrange(in_which_country_do_you_currently_reside, desc(freq)) %>%  
+  filter(platform_name == "Kaggle Learn Courses" & rank == 1) %>% 
+  ggplot(aes(fct_rev(fct_reorder(in_which_country_do_you_currently_reside,freq )), freq,
+             fill = fct_rev(fct_reorder(in_which_country_do_you_currently_reside,freq )))) +
+  geom_col() + xlab("Percentage") + ylab(NULL) + labs(fill = "Countries - Kaggle is their first platform") +scale_y_continuous(labels = scales::percent)
+```
+
+We will extract where kaggle is in the first five place.
+
+```{r}
+kaggle_first_countries <- platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  group_by( in_which_country_do_you_currently_reside,platform_name) %>% 
+  summarise(cnt = n()) %>% 
+  mutate(freq = round(cnt/sum(cnt),3), rank = rank(desc(freq), ties.method = "first")) %>% 
+  arrange(in_which_country_do_you_currently_reside, desc(freq)) %>%  
+  filter(platform_name == "Kaggle Learn Courses" & rank == 1) %>% 
+  pull(in_which_country_do_you_currently_reside)
+
+kaggle_second_countries <- platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  group_by( in_which_country_do_you_currently_reside,platform_name) %>% 
+  summarise(cnt = n()) %>% 
+  mutate(freq = round(cnt/sum(cnt),3), rank = rank(desc(freq), ties.method = "first")) %>% 
+  arrange(in_which_country_do_you_currently_reside, desc(freq)) %>%  
+  filter(platform_name == "Kaggle Learn Courses" & rank == 2) %>% 
+  pull(in_which_country_do_you_currently_reside)
+
+
+kaggle_third_countries <- platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  group_by( in_which_country_do_you_currently_reside,platform_name) %>% 
+  summarise(cnt = n()) %>% 
+  mutate(freq = round(cnt/sum(cnt),3), rank = rank(desc(freq), ties.method = "first")) %>% 
+  arrange(in_which_country_do_you_currently_reside, desc(freq)) %>%  
+  filter(platform_name == "Kaggle Learn Courses" & rank == 3) %>% 
+  pull(in_which_country_do_you_currently_reside)
+
+kaggle_fourth_countries <- platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  group_by( in_which_country_do_you_currently_reside,platform_name) %>% 
+  summarise(cnt = n()) %>% 
+  mutate(freq = round(cnt/sum(cnt),3), rank = rank(desc(freq), ties.method = "first")) %>% 
+  arrange(in_which_country_do_you_currently_reside, desc(freq)) %>%  
+  filter(platform_name == "Kaggle Learn Courses" & rank == 4) %>% 
+  pull(in_which_country_do_you_currently_reside)
+
+
+kaggle_fifth_countries <- platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  group_by( in_which_country_do_you_currently_reside,platform_name) %>% 
+  summarise(cnt = n()) %>% 
+  mutate(freq = round(cnt/sum(cnt),3), rank = rank(desc(freq), ties.method = "first")) %>% 
+  arrange(in_which_country_do_you_currently_reside, desc(freq)) %>%  
+  filter(platform_name == "Kaggle Learn Courses" & rank == 5) %>% 
+  pull(in_which_country_do_you_currently_reside)
+
+```
+Countries where kaggle has the first place
+
+```{r}
+platform %>% 
+  filter(platform_name != "No Response" &platform_name != "Other" 
+         & platform_name != "None") %>% 
+  filter(in_which_country_do_you_currently_reside %in% kaggle_first_countries) %>% 
+  group_by(in_which_country_do_you_currently_reside) %>% 
+  summarise(cnt = n(),platform_name) %>% 
+  mutate(freq = round(cnt/sum(cnt),3)) %>% 
+  arrange(desc(freq)) %>% 
+  ggplot(aes(in_which_country_do_you_currently_reside,freq, fill = fct_infreq(platform_name) )) + geom_col(position = "fill") + xlab(NULL) + ylab("Percentage") + labs(fill = "Platforms")  +scale_y_continuous(labels = scales::percent)
 ```
 
 
+# Conclusion
 
-
-
-
-
-
-
-
+Kaggle learn courses are doing the something right on above countries. They may have apply similar strategy to increase their sales where they are on below first. 
 
 
